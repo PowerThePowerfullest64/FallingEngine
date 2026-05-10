@@ -7,7 +7,8 @@ World::World(int _width, int _height) {
     width = _width;
     height = _height;
 
-    cells.resize(width * height, AIR);
+    materialType.resize(width * height, AIR);
+    gasAmount.resize(width * height, 1.f);
 }
 
 bool World::CanMoveTo(int from, int to) {
@@ -16,12 +17,12 @@ bool World::CanMoveTo(int from, int to) {
     uint8_t otherType = GetCell(to);
 
     if (otherType == 255) return false;
-    if (cellTable[otherType].solid) return false;
+    if (materialTable[otherType].state == MatterState::SOLID) return false;
 
     uint8_t type = GetCell(from);
     
 
-    return cellTable[type].density > cellTable[otherType].density;
+    return materialTable[type].density > materialTable[otherType].density;
 }
 
 void World::Update() {
@@ -34,7 +35,7 @@ void World::UpdateCell(int index) {
     uint8_t type = GetCell(index);
 
     if (type == AIR) return; // don't update air for now
-    if (cellTable[type].solid) return; // solids aren't affected by gravity
+    if (materialTable[type].state == MatterState::SOLID) return; // solids aren't affected by gravity
 
     int x = index % width;
     int y = index / width;
@@ -55,7 +56,7 @@ void World::UpdateCell(int index) {
         if (CanMoveTo(index, dr)) { Swap(index, dr); return; }
     }
 
-    if (cellTable[type].liquid) {
+    if (materialTable[type].state == MatterState::LIQUID) {
         if (randomInt()) {
             for (int i = 1; i <= dissipationStrength; i++) {
                 int nx = x+1;
@@ -122,7 +123,7 @@ void World::InitGraphics() {
 void World::BuildPixelBuffer() {
     for (int i = 0; i < width*height; i++) {
         uint8_t type = GetCell(i);
-        pixels[i] = cellTable[type].color;
+        pixels[i] = materialTable[type].color;
     }
 
     UpdateTexture(texture, pixels.data());

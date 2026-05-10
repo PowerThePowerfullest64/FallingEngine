@@ -5,7 +5,7 @@
 #include <vector>
 #include "raylib.h"
 
-enum CellType : uint8_t {
+enum MaterialType : uint8_t {
     AIR,
     SAND,
     WATER,
@@ -14,24 +14,34 @@ enum CellType : uint8_t {
     CELL_TYPE_COUNT
 };
 
-struct Cell {
-    std::string name;
+enum class MatterState : uint8_t {
+    GAS,
+    POWDER,
+    LIQUID,
+    SOLID
+};
+
+struct CellMaterial {
+    const char* name;
     float density; // kg/m^3
-    bool liquid;
-    bool solid;
+    MatterState state;
     Color color;
 };
 
 class World {
-    Cell cellTable[CELL_TYPE_COUNT] = {
-        // name, density, liquid, solid, color, visible
-        { "Air", 1.225f, false, false, {15, 0, 50, 255} },
-        { "Sand", 1500.f, false, false, YELLOW },
-        { "Water", 1000.f, true, false, BLUE },
-        { "Steel", 7850.f, false, true, GRAY }
+    public:
+    static inline constexpr CellMaterial materialTable[CELL_TYPE_COUNT] = {
+        // name, density, matter state, color
+        { "Air", 1.225f, MatterState::GAS, {15, 0, 50, 255} },
+        { "Sand", 1500.f, MatterState::POWDER, YELLOW },
+        { "Water", 1000.f, MatterState::LIQUID, BLUE },
+        { "Steel", 7850.f, MatterState::SOLID, GRAY }
     };
 
-    std::vector<uint8_t> cells;
+    private:
+    std::vector<uint8_t> materialType;
+    std::vector<float> gasAmount;
+    // add some flow direction for liquids?
     public:
     int width, height;
     int cellSize = 4;
@@ -43,11 +53,11 @@ class World {
     World(int _width, int _height);
 
     // cell
-    uint8_t GetCell(int index) { if (!WithinBounds(index)) return 255; return cells[index]; }
-    uint8_t GetCell(int x, int y) { size_t index = Index(x, y); return GetCell(index); }
-    void SetCell(int index, uint8_t type) { cells[index] = type; }
+    uint8_t GetCell(int index) { if (!WithinBounds(index)) return 255; return materialType[index]; }
+    uint8_t GetCell(int x, int y) { int index = Index(x, y); return GetCell(index); }
+    void SetCell(int index, uint8_t type) { materialType[index] = type; if (materialTable[type].state != MatterState::GAS) gasAmount[index] = 0.f; }
     void SetCell(int x, int y, uint8_t type) { int index = Index(x, y); SetCell(index, type); }
-    void Swap(int from, int to) { uint8_t tmp = GetCell(from); cells[from] = GetCell(to); cells[to] = tmp; }
+    void Swap(int from, int to) { uint8_t tmpMat = GetCell(from); materialType[from] = GetCell(to); materialType[to] = tmpMat; float tmpGas = gasAmount[from]; gasAmount[from] = gasAmount[to]; gasAmount[to] = tmpGas; }
     bool CanMoveTo(int from, int to);
     bool WithinBounds(int index) { return index >= 0 && index < width * height; }
     bool WithinBounds(int x, int y) { return x >= 0 && x < width && y >= 0 && y < height; }
