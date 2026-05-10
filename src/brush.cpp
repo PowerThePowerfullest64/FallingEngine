@@ -1,6 +1,10 @@
 #include "brush.h"
 
+#include "imgui.h"
+
 void Brush::Update(World& world, int mouseX, int mouseY) {
+    if (ImGui::GetIO().WantCaptureMouse) return;
+
     int x = mouseX / world.cellSize;
     int y = mouseY / world.cellSize;
 
@@ -17,6 +21,8 @@ void Brush::Update(World& world, int mouseX, int mouseY) {
 }
 
 void Brush::Paint(World& world, bool erase) {
+    if (ImGui::GetIO().WantCaptureMouse) return;
+
     for (int index : affectedCells) {
         if (erase) world.SetCell(index, AIR);
         else world.SetCell(index, type);
@@ -24,12 +30,16 @@ void Brush::Paint(World& world, bool erase) {
 }
 
 void Brush::ChangeRadius(int change) {
+    if (ImGui::GetIO().WantCaptureMouse) return;
+
     radius += change;
 
     radius = std::max(radius, 0);
 }
 
 void Brush::Draw(const World& world) {
+    if (ImGui::GetIO().WantCaptureMouse) return;
+
     for (int index : affectedCells) {
         int wx = index % world.width;
         int wy = index / world.height;
