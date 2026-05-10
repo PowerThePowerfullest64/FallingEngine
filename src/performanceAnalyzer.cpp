@@ -1,10 +1,10 @@
-#include "performanceWindow.h"
+#include "performanceAnalyzer.h"
 
 #include "raylib.h"
 #include "imgui.h"
 #include "rlImGui.h"
 
-void PerformanceWindow::Draw(double updateMs, double bufferMs, double drawMs) {
+void PerformanceAnalyzer::Draw(double updateMs, double bufferMs, double drawMs) {
     ImGui::Begin("Performance Analyzer");
 
     ImGui::Text("Update time: %.2f ms", updateMs);
