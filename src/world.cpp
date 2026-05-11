@@ -8,7 +8,8 @@ World::World(int _width, int _height) {
     height = _height;
 
     materialType.resize(width * height, AIR);
-    gasAmount.resize(width * height, 1.f);
+    flowDirection.resize(width * height, false);
+    updated.resize(width * height, false);
 }
 
 bool World::CanMoveTo(int from, int to) {
@@ -20,29 +21,39 @@ bool World::CanMoveTo(int from, int to) {
     if (materialTable[otherType].state == MatterState::SOLID) return false;
 
     uint8_t type = GetCell(from);
+
+    if (materialTable[type].state == MatterState::GAS && materialTable[otherType].state != MatterState::GAS) return false;
     
+    if (materialTable[type].state == MatterState::GAS && materialTable[otherType].state == MatterState::GAS) {
+        return materialTable[type].density < materialTable[otherType].density;
+    }
 
     return materialTable[type].density > materialTable[otherType].density;
 }
 
 void World::Update() {
+    for (int i = 0; i < updated.size(); i++) updated[i] = false;
     for (int y = height-2; y >= 0; y--)
     if (randomInt()) for (int x = 0; x < width; x++) UpdateCell(x, y);
     else for (int x = width-1; x >= 0; x--) UpdateCell(x, y);
+
+    for (int y = 1; y < height; y++)
+    if (randomInt()) for (int x = 0; x < width; x++) UpdateGas(x, y);
+    else for (int x = width-1; x >= 0; x--) UpdateGas(x, y);
 }
 
 void World::UpdateCell(int index) {
     uint8_t type = GetCell(index);
-
-    if (type == AIR) return; // don't update air for now
-    if (materialTable[type].state == MatterState::SOLID) return; // solids aren't affected by gravity
+    if (materialTable[type].state == MatterState::GAS) return;
+    if (materialTable[type].state == MatterState::SOLID) return; // solids aren't affected by gravity and physics
+    if (updated[index]) return; // already updated, skip
 
     int x = index % width;
     int y = index / width;
 
     int d = Index(x, y+1);
 
-    if (CanMoveTo(index, d)) Swap(index, d);
+    if (CanMoveTo(index, d)) { Swap(index, d); return; };
 
     if (randomInt()) {
         int dr = Index(x+1, y+1);
@@ -57,57 +68,68 @@ void World::UpdateCell(int index) {
     }
 
     if (materialTable[type].state == MatterState::LIQUID) {
-        if (randomInt()) {
-            for (int i = 1; i <= dissipationStrength; i++) {
-                int nx = x+1;
-
-                if (CanMoveTo(index, Index(nx, y))) {
-                    x = nx;
-                } else {
-                    if (i != 1) {
-                        Swap(index, Index(x, y));
-                        return;
-                    }
-                }
-            }
-            for (int i = 1; i <= dissipationStrength; i++) {
-                int nx = x-1;
-
-                if (CanMoveTo(index, Index(nx, y))) {
-                    x = nx;
-                } else {
-                    if (i != 1) {
-                        Swap(index, Index(x, y));
-                        return;
-                    }
-                }
-            }
-        } else {
-            for (int i = 1; i <= dissipationStrength; i++) {
-                int nx = x-1;
-
-                if (CanMoveTo(index, Index(nx, y))) {
-                    x = nx;
-                } else {
-                    if (i != 1) {
-                        Swap(index, Index(x, y));
-                        return;
-                    }
-                }
-            }
-            for (int i = 1; i <= dissipationStrength; i++) {
-                int nx = x+1;
-
-                if (CanMoveTo(index, Index(nx, y))) {
-                    x = nx;
-                } else {
-                    if (i != 1) {
-                        Swap(index, Index(x, y));
-                        return;
-                    }
-                }
-            }
+        if (flowDirection[index] == true) {
+            int r = Index(x+1, y);
+            if (CanMoveTo(index, r)) { Swap(index, r); return; }
+            else flowDirection[index] = false;
         }
+        else {
+            int l = Index(x-1, y);
+            if (CanMoveTo(index, l)) { Swap(index, l); return; }
+            else flowDirection[index] = true;
+        }
+    }
+}
+
+void World::UpdateGas(int index) {
+    uint8_t type = GetCell(index);
+    if (materialTable[type].state != MatterState::GAS) return; // only update gases
+    //if (type == AIR) return;
+    if (updated[index]) return;
+
+    bool didMove = false;
+    int x, y;
+    GetXY(x, y, index);
+
+    int u = Index(x, y-1);
+
+    if (CanMoveTo(index, u)) { Swap(index, u); didMove = true; GetXY(x, y, index); }
+
+    else if (randomInt()) {
+        int ur = Index(x+1, y-1);
+        if (CanMoveTo(index, ur)) { Swap(index, ur); didMove = true; GetXY(x, y, index); }
+        int ul = Index(x-1, y-1);
+        if (CanMoveTo(index, ul)) { Swap(index, ul); didMove = true; GetXY(x, y, index); }
+    } else {
+        int ul = Index(x-1, y-1);
+        if (CanMoveTo(index, ul)) { Swap(index, ul); didMove = true; GetXY(x, y, index); }
+
+        else {
+            int ur = Index(x+1, y-1);
+            if (CanMoveTo(index, ur)) { Swap(index, ur); didMove = true; GetXY(x, y, index); }
+        }
+    }
+
+    if (randomInt()) {
+        if (randomInt()) {
+            int r = Index(x+1, y);
+            if (CanMoveTo(index, r)) { Swap(index, r); GetXY(x, y, index); }
+        } else {
+            int l = Index(x-1, y);
+            if (CanMoveTo(index, l)) { Swap(index, l); GetXY(x, y, index); }
+        }
+    }
+
+    if (didMove) return;
+
+    if (flowDirection[index] == true) {
+        int r = Index(x+1, y);
+        if (CanMoveTo(index, r)) { Swap(index, r); return; }
+        else flowDirection[index] = false;
+    } else {
+        int l = Index(x-1, y);
+        if (CanMoveTo(index, l)) { Swap(index, l); return; }
+        else flowDirection[index] = true;
     }
 }
 

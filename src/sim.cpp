@@ -33,6 +33,8 @@ void Sim::Run() {
         if (IsKeyPressed(KEY_ONE)) brush.type = SAND;
         if (IsKeyPressed(KEY_TWO)) brush.type = WATER;
         if (IsKeyPressed(KEY_THREE)) brush.type = STEEL;
+        if (IsKeyPressed(KEY_FOUR)) brush.type = HYDROGEN;
+        if (IsKeyPressed(KEY_FIVE)) brush.type = STEAM;
 
         brush.ChangeRadius(GetMouseWheelMove());
 

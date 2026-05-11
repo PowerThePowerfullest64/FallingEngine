@@ -5,7 +5,7 @@
 int main() {
     std::cout << "Hello, World!\n";
 
-    Sim sim(64.f);
+    Sim sim(48.f);
 
     sim.Run();
 
